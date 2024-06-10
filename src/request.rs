@@ -9,15 +9,17 @@ pub struct Request {
 }
 
 pub fn parse_request(r: String) -> Request {
-    let r = r.split(" ");
-    let request_type = match r[0] {
+    let request= r.split("\r\n").collect::<Vec<_>>();
+    let request_line = request[0].split(" ").collect::<Vec<_>>();
+    let request_type = match request_line[0] {
         "GET" => RequestType::Get,
         "POST" => RequestType::Post,
         _ => panic!("Invalid Request Type"),
     };
+    let path = request_line[1].to_string();
 
     Request {
         request_type,
-        path: r[1],
+        path,
     }
 }

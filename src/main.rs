@@ -1,5 +1,8 @@
 mod request;
-use crate::request::RequestType;
+mod response;
+
+use crate::request::{parse_request, RequestType};
+use crate::response::{Response, StatusCode};
 
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
@@ -10,19 +13,25 @@ async fn handle_connection(mut socket: TcpStream) -> io::Result<()> {
     let mut buffer = [0; 4096];
     let size = socket.read(&mut buffer).await?;
 
-    let request_str = String::from_utf8_lossy(&buffer)
-        .split("\r\n")
-        .collect();
-    let request = request::parse_request(request_str.head());;
+    let request_str = String::from_utf8_lossy(&buffer).to_string();
+    let request = parse_request(request_str);
     let response = match request.request_type {
-        RequestType::Get => {},
-        RequestType::Post => {},
+        RequestType::Get => {
+            match request.path.as_str() {
+                "/" => Response {
+                    code: StatusCode::Ok,
+                    body: "<h1>Hello, World!</h1>".to_string(),
+                },
+                _ => Response {
+                    code: StatusCode::NotFound,
+                    body: "Not Found".to_string()
+                },
+            }
+        },
+        _ => panic!("Error: Unimplemented Request"),
     };
 
-    socket.write(b"HTTP/1.1 200 OK\r\n\r\n").await?;
-    socket.write(b"<h1>Hello!</h1>").await?;
-    socket.flush().await?;
-
+    socket.write_all(response.into_string().as_ref()).await?;
     Ok(())
 }
 
